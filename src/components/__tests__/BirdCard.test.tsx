@@ -23,7 +23,9 @@ describe('BirdCard', () => {
       attribution: 'Foto por Juan Pérez'
     }],
     observedOn: '2024-02-29',
-    quality: 'research'
+    quality: 'research',
+    votes: 10,
+    observationsCount: 5
   };
 
   it('should render bird information correctly', () => {

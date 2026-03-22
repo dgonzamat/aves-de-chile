@@ -1,12 +1,12 @@
-import { CHILE_PLACE_ID } from '../constants';
+import { CHILE_PLACE_ID, REGIONES_CHILE } from '../constants';
 import type { Bird, BirdDetails } from '../types';
 
 const INATURALIST_API_BASE = 'https://api.inaturalist.org/v1';
 
 export class INaturalistApi {
-  private async fetchWithRetry(endpoint: string, params: Record<string, any> = {}, retries = 3): Promise<any> {
+  private async fetchWithRetry(endpoint: string, params: Record<string, any> = {}, maxRateLimitRetries = 3): Promise<any> {
     const queryParams = new URLSearchParams();
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         queryParams.append(key, String(value));
@@ -14,49 +14,30 @@ export class INaturalistApi {
     });
 
     const url = `${INATURALIST_API_BASE}${endpoint}?${queryParams.toString()}`;
-    let lastError: Error | null = null;
-    let attempt = 0;
-    
-    while (attempt < retries) {
-      try {
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          if (response.status === 429) {
-            const retryAfter = parseInt(response.headers.get('Retry-After') || '60', 10);
-            await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-            attempt++;
-            continue;
-          }
-          
-          throw new Error(await this.getErrorMessage(response));
-        }
+    let rateLimitAttempts = 0;
 
+    while (rateLimitAttempts < maxRateLimitRetries) {
+      const response = await fetch(url, { method: 'GET' });
+
+      if (response.ok) {
         const data = await response.json();
-        
         if (!data || typeof data !== 'object') {
           throw new Error('Respuesta inválida del servidor');
         }
-
         return data;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error('Error desconocido');
-        
-        if (attempt === retries - 1) {
-          console.error('Error en la petición:', {
-            url,
-            params,
-            error: lastError.message
-          });
-          throw new Error(`Error al obtener datos: ${lastError.message}`);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-        attempt++;
       }
+
+      if (response.status === 429) {
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '60', 10);
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        rateLimitAttempts++;
+        continue;
+      }
+
+      throw new Error(await this.getErrorMessage(response));
     }
 
-    throw lastError || new Error('Error desconocido en la petición');
+    throw new Error('Se agotaron los intentos de conexión');
   }
 
   private async getErrorMessage(response: Response): Promise<string> {
@@ -77,8 +58,7 @@ export class INaturalistApi {
 
   private getPhotoUrl(photo: any): string | null {
     if (!photo) return null;
-    
-    // Intentar obtener la URL en diferentes formatos
+
     const possibleUrls = [
       photo.url,
       photo.medium_url,
@@ -86,7 +66,6 @@ export class INaturalistApi {
       photo.photo?.medium_url
     ].filter(Boolean);
 
-    // Usar la primera URL válida encontrada
     const url = possibleUrls[0];
     return url ? url.replace('square', 'medium') : null;
   }
@@ -107,6 +86,23 @@ export class INaturalistApi {
     } catch {
       return false;
     }
+  }
+
+  private getRegionFromCoordinates(lat: number, lng: number): string {
+    let closestRegion = REGIONES_CHILE[0];
+    let minDistance = Infinity;
+
+    for (const region of REGIONES_CHILE) {
+      const distance = Math.sqrt(
+        Math.pow(region.lat - lat, 2) + Math.pow(region.lng - lng, 2)
+      );
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestRegion = region;
+      }
+    }
+
+    return closestRegion.nombre;
   }
 
   private async getSoundData(taxonId: number): Promise<Array<{
@@ -130,7 +126,7 @@ export class INaturalistApi {
 
       return data.results
         .filter(obs => obs.sounds && obs.sounds.length > 0)
-        .flatMap(obs => 
+        .flatMap(obs =>
           obs.sounds.map(sound => ({
             id: sound.id,
             url: sound.file_url,
@@ -148,16 +144,16 @@ export class INaturalistApi {
   private determineSoundType(sound: any): string {
     const filename = sound.file_url?.toLowerCase() || '';
     const description = sound.description?.toLowerCase() || '';
-    
+
     if (
-      description.includes('song') || 
+      description.includes('song') ||
       description.includes('canto') ||
       filename.includes('song') ||
       filename.includes('canto')
     ) {
       return 'song';
     }
-    
+
     return 'call';
   }
 
@@ -178,7 +174,7 @@ export class INaturalistApi {
         order: params.order || 'desc',
         photos: true,
         place_id: CHILE_PLACE_ID,
-        view: 'species', // Always group by species
+        view: 'species',
         ...params
       };
 
@@ -208,7 +204,7 @@ export class INaturalistApi {
                 latitude: obs.latitude || 0,
                 longitude: obs.longitude || 0,
                 placeGuess: obs.place_guess || 'Ubicación no especificada',
-                region: obs.place_guess || 'Región no especificada'
+                region: this.getRegionFromCoordinates(obs.latitude || 0, obs.longitude || 0)
               },
               photos: obs.photos
                 .map(photo => {
@@ -231,10 +227,6 @@ export class INaturalistApi {
         })
         .filter((bird): bird is Bird => bird !== null && bird.photos.length > 0);
 
-      if (validObservations.length === 0) {
-        throw new Error('No se encontraron observaciones válidas');
-      }
-
       return validObservations;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error desconocido';
@@ -244,10 +236,15 @@ export class INaturalistApi {
 
   async getBirdDetails(taxonId: number): Promise<BirdDetails> {
     try {
-      const [taxonData, observationsData, sounds] = await Promise.all([
-        this.fetchWithRetry(`/taxa/${taxonId}`, {
-          locale: 'es'
-        }),
+      const taxonData = await this.fetchWithRetry(`/taxa/${taxonId}`, {
+        locale: 'es'
+      });
+
+      if (!taxonData.results?.[0]) {
+        throw new Error('Especie no encontrada');
+      }
+
+      const [observationsData, sounds] = await Promise.all([
         this.fetchWithRetry('/observations', {
           taxon_id: taxonId,
           per_page: 10,
@@ -261,10 +258,6 @@ export class INaturalistApi {
         this.getSoundData(taxonId)
       ]);
 
-      if (!taxonData.results?.[0]) {
-        throw new Error('Especie no encontrada');
-      }
-
       const taxon = taxonData.results[0];
       const observations = observationsData.results
         .map(obs => ({
@@ -273,7 +266,7 @@ export class INaturalistApi {
             latitude: obs.latitude || 0,
             longitude: obs.longitude || 0,
             placeGuess: obs.place_guess || 'Ubicación no especificada',
-            region: obs.place_guess || 'Región no especificada'
+            region: this.getRegionFromCoordinates(obs.latitude || 0, obs.longitude || 0)
           },
           photos: obs.photos
             .map(photo => {
