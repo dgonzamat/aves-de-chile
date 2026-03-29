@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Filters } from '../types';
 import { REGIONES_CHILE } from '../constants';
-import { HABITATS, CONSERVATION_STATUS, SEASONALITY } from '../types/index';
+import { CONSERVATION_STATUS } from '../types/index';
 
 interface FilterPanelProps {
   filters: Filters;
@@ -28,20 +28,6 @@ export function FilterPanel({ filters, setFilters }: FilterPanelProps) {
         </div>
 
         <div>
-          <label htmlFor="observer" className="block text-sm font-medium text-gray-700 mb-1">
-            Observador
-          </label>
-          <input
-            type="text"
-            id="observer"
-            value={filters.observer}
-            onChange={(e) => setFilters(prev => ({ ...prev, observer: e.target.value }))}
-            placeholder="Nombre del observador..."
-            className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-          />
-        </div>
-        
-        <div>
           <label htmlFor="region" className="block text-sm font-medium text-gray-700 mb-1">
             Región
           </label>
@@ -61,25 +47,6 @@ export function FilterPanel({ filters, setFilters }: FilterPanelProps) {
         </div>
 
         <div>
-          <label htmlFor="habitat" className="block text-sm font-medium text-gray-700 mb-1">
-            Hábitat
-          </label>
-          <select
-            id="habitat"
-            value={filters.habitat}
-            onChange={(e) => setFilters(prev => ({ ...prev, habitat: e.target.value }))}
-            className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-          >
-            <option value="">Todos los hábitats</option>
-            {HABITATS.map(habitat => (
-              <option key={habitat.id} value={habitat.id}>
-                {habitat.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
           <label htmlFor="conservation" className="block text-sm font-medium text-gray-700 mb-1">
             Estado de conservación
           </label>
@@ -93,25 +60,6 @@ export function FilterPanel({ filters, setFilters }: FilterPanelProps) {
             {CONSERVATION_STATUS.map(status => (
               <option key={status.id} value={status.id}>
                 {status.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="seasonality" className="block text-sm font-medium text-gray-700 mb-1">
-            Temporada
-          </label>
-          <select
-            id="seasonality"
-            value={filters.seasonality}
-            onChange={(e) => setFilters(prev => ({ ...prev, seasonality: e.target.value }))}
-            className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-          >
-            <option value="">Todas las temporadas</option>
-            {SEASONALITY.map(season => (
-              <option key={season.id} value={season.id}>
-                {season.name}
               </option>
             ))}
           </select>
