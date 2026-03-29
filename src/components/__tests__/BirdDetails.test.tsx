@@ -12,6 +12,7 @@ describe('BirdDetails', () => {
     threatened: true,
     endemic: true,
     defaultPhoto: 'https://example.com/photo.jpg',
+    sounds: [],
     observations: [
       {
         id: 1,

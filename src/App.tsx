@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { BirdIcon, Search, ChevronLeft, ChevronRight, SortAsc, Calendar, ListFilter, Filter, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { BirdIcon, Search, ChevronLeft, ChevronRight, SortAsc, ListFilter, Filter, X } from 'lucide-react';
 import { INaturalistApi } from './services/iNaturalistApi';
 import { BirdCard } from './components/BirdCard';
 import { BirdDetails } from './components/BirdDetails';
 import { FilterPanel } from './components/FilterPanel';
+import { REGIONES_CHILE } from './constants';
 import type { Bird, BirdDetails as BirdDetailsType, Filters } from './types';
 
 const api = new INaturalistApi();
@@ -15,29 +16,33 @@ type SortType = 'alphabetical' | 'taxonomic';
 function App() {
   const [birds, setBirds] = useState<Bird[]>([]);
   const [selectedBird, setSelectedBird] = useState<BirdDetailsType | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingBirds, setLoadingBirds] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [sortType, setSortType] = useState<SortType>('alphabetical');
   const [showFilters, setShowFilters] = useState(false);
+  const detailsCache = useRef<Map<number, BirdDetailsType>>(new Map());
   const [filters, setFilters] = useState<Filters>({
     startDate: '2005-01-01',
     endDate: '2026-12-31',
     region: '',
     searchTerm: '',
-    habitat: '',
-    observer: '',
     conservationStatus: '',
-    seasonality: ''
   });
+
+  const getRegionName = (regionId: string): string => {
+    const region = REGIONES_CHILE.find(r => r.id === regionId);
+    return region ? region.nombre : '';
+  };
 
   useEffect(() => {
     async function fetchBirds() {
       try {
-        setLoading(true);
-        const data = await api.getBirds({ 
+        setLoadingBirds(true);
+        const data = await api.getBirds({
           q: filters.searchTerm,
           per_page: BIRDS_PER_PAGE,
           page: currentPage,
@@ -45,22 +50,22 @@ function App() {
           order_by: sortType === 'taxonomic' ? 'species' : 'views'
         });
 
-        // Filter by date range and other criteria
+        const regionName = filters.region ? getRegionName(filters.region) : '';
+
         const filteredData = data.filter(bird => {
           const observationDate = new Date(bird.observedOn);
-          const meetsDateRange = observationDate >= new Date(filters.startDate) && 
+          const meetsDateRange = observationDate >= new Date(filters.startDate) &&
                                observationDate <= new Date(filters.endDate);
-          
-          const meetsConservationStatus = !filters.conservationStatus || 
+
+          const meetsConservationStatus = !filters.conservationStatus ||
                                         bird.species.conservationStatus === filters.conservationStatus;
-          
-          const meetsRegion = !filters.region || 
-                             bird.location.region.toLowerCase().includes(filters.region.toLowerCase());
+
+          const meetsRegion = !regionName ||
+                             bird.location.region === regionName;
 
           return meetsDateRange && meetsConservationStatus && meetsRegion;
         });
 
-        // Sort based on selected criteria
         const sortedData = [...filteredData].sort((a, b) => {
           if (sortType === 'taxonomic') {
             return sortOrder === 'asc'
@@ -81,7 +86,7 @@ function App() {
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar los datos');
       } finally {
-        setLoading(false);
+        setLoadingBirds(false);
       }
     }
 
@@ -99,14 +104,20 @@ function App() {
   };
 
   const handleBirdSelect = async (bird: Bird) => {
+    const cached = detailsCache.current.get(bird.species.id);
+    if (cached) {
+      setSelectedBird(cached);
+      return;
+    }
     try {
-      setLoading(true);
+      setLoadingDetails(true);
       const details = await api.getBirdDetails(bird.species.id);
+      detailsCache.current.set(bird.species.id, details);
       setSelectedBird(details);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar los detalles');
     } finally {
-      setLoading(false);
+      setLoadingDetails(false);
     }
   };
 
@@ -117,33 +128,6 @@ function App() {
   const toggleSortType = () => {
     setSortType(prev => prev === 'alphabetical' ? 'taxonomic' : 'alphabetical');
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-radial from-blue-50 to-gray-50">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-gray-600 font-medium">Cargando catálogo de aves...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-radial from-red-50 to-gray-50">
-        <div className="text-center space-y-4 p-8 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg">
-          <p className="text-red-600 font-medium">Error: {error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md hover:shadow-lg"
-          >
-            Reintentar
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-gray-50">
@@ -220,11 +204,39 @@ function App() {
           </div>
         )}
 
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between">
+            <p className="text-red-600 font-medium">Error: {error}</p>
+            <button
+              onClick={() => { setError(null); window.location.reload(); }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        {loadingDetails && (
+          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+            <div className="bg-white p-6 rounded-xl shadow-xl text-center space-y-3">
+              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-gray-600 font-medium">Cargando detalles...</p>
+            </div>
+          </div>
+        )}
+
         {selectedBird ? (
-          <BirdDetails 
-            bird={selectedBird} 
-            onBack={() => setSelectedBird(null)} 
+          <BirdDetails
+            bird={selectedBird}
+            onBack={() => setSelectedBird(null)}
           />
+        ) : loadingBirds ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-gray-600 font-medium">Cargando catálogo de aves...</p>
+            </div>
+          </div>
         ) : birds.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600 text-lg">

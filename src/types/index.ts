@@ -79,22 +79,8 @@ export interface Filters {
   endDate: string;
   region: string;
   searchTerm: string;
-  habitat: string;
-  observer: string;
   conservationStatus: string;
-  seasonality: string;
 }
-
-export const HABITATS = [
-  { id: 'forest', name: 'Bosque' },
-  { id: 'wetland', name: 'Humedal' },
-  { id: 'coast', name: 'Costa' },
-  { id: 'mountain', name: 'Montaña' },
-  { id: 'desert', name: 'Desierto' },
-  { id: 'urban', name: 'Urbano' },
-  { id: 'grassland', name: 'Pradera' },
-  { id: 'scrubland', name: 'Matorral' }
-] as const;
 
 export const CONSERVATION_STATUS = [
   { id: 'LC', name: 'Preocupación menor' },
@@ -102,11 +88,4 @@ export const CONSERVATION_STATUS = [
   { id: 'VU', name: 'Vulnerable' },
   { id: 'EN', name: 'En peligro' },
   { id: 'CR', name: 'En peligro crítico' }
-] as const;
-
-export const SEASONALITY = [
-  { id: 'resident', name: 'Residente' },
-  { id: 'migratory', name: 'Migratoria' },
-  { id: 'summer', name: 'Verano' },
-  { id: 'winter', name: 'Invierno' }
 ] as const;
