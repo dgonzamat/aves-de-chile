@@ -30,16 +30,16 @@ describe('BirdCard', () => {
 
   it('should render bird information correctly', () => {
     render(<BirdCard bird={mockBird} />);
-    
+
     expect(screen.getByText('Paloma común')).toBeInTheDocument();
     expect(screen.getByText('Columba livia')).toBeInTheDocument();
-    expect(screen.getByText('Metropolitana')).toBeInTheDocument();
+    // placeGuess is shown when available (instead of region)
     expect(screen.getByText('Santiago')).toBeInTheDocument();
   });
 
   it('should show conservation status badges when applicable', () => {
     render(<BirdCard bird={mockBird} />);
-    
+
     expect(screen.getByText('Amenazada')).toBeInTheDocument();
     expect(screen.getByText('Endémica')).toBeInTheDocument();
   });

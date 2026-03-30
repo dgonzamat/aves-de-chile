@@ -1,4 +1,5 @@
 import React from 'react';
+import { RotateCcw } from 'lucide-react';
 import type { Filters } from '../types';
 import { REGIONES_CHILE } from '../constants';
 import { CONSERVATION_STATUS } from '../types/index';
@@ -8,66 +9,70 @@ interface FilterPanelProps {
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
 }
 
-export function FilterPanel({ filters, setFilters }: FilterPanelProps) {
-  return (
-    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-lg shadow-md mb-6 animate-fade-in">
-      <h2 className="text-lg font-semibold mb-4">Filtros de búsqueda</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div>
-          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
-            Nombre del ave
-          </label>
-          <input
-            type="text"
-            id="search"
-            value={filters.searchTerm}
-            onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
-            placeholder="Nombre común o científico..."
-            className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-          />
-        </div>
+const defaultFilters: Filters = {
+  startDate: '2005-01-01',
+  endDate: '2026-12-31',
+  region: '',
+  searchTerm: '',
+  conservationStatus: '',
+};
 
+export function FilterPanel({ filters, setFilters }: FilterPanelProps) {
+  const hasActiveFilters = filters.region || filters.conservationStatus ||
+    filters.startDate !== defaultFilters.startDate || filters.endDate !== defaultFilters.endDate;
+
+  return (
+    <div className="filter-panel animate-slide-down">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-bold text-gray-900">Filtros</h2>
+        {hasActiveFilters && (
+          <button
+            onClick={() => setFilters(prev => ({ ...defaultFilters, searchTerm: prev.searchTerm }))}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Limpiar
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div>
-          <label htmlFor="region" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="region" className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
             Región
           </label>
           <select
             id="region"
             value={filters.region}
             onChange={(e) => setFilters(prev => ({ ...prev, region: e.target.value }))}
-            className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+            className="filter-select"
           >
-            <option value="">Todas las regiones</option>
+            <option value="">Todas</option>
             {REGIONES_CHILE.map(region => (
-              <option key={region.id} value={region.id}>
-                {region.nombre}
-              </option>
+              <option key={region.id} value={region.id}>{region.nombre}</option>
             ))}
           </select>
         </div>
 
         <div>
-          <label htmlFor="conservation" className="block text-sm font-medium text-gray-700 mb-1">
-            Estado de conservación
+          <label htmlFor="conservation" className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+            Conservación
           </label>
           <select
             id="conservation"
             value={filters.conservationStatus}
             onChange={(e) => setFilters(prev => ({ ...prev, conservationStatus: e.target.value }))}
-            className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+            className="filter-select"
           >
-            <option value="">Todos los estados</option>
+            <option value="">Todos</option>
             {CONSERVATION_STATUS.map(status => (
-              <option key={status.id} value={status.id}>
-                {status.name}
-              </option>
+              <option key={status.id} value={status.id}>{status.name}</option>
             ))}
           </select>
         </div>
 
         <div>
-          <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-            Fecha inicial
+          <label htmlFor="startDate" className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+            Desde
           </label>
           <input
             type="date"
@@ -76,13 +81,13 @@ export function FilterPanel({ filters, setFilters }: FilterPanelProps) {
             onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
             min="2005-01-01"
             max="2030-12-31"
-            className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+            className="filter-input"
           />
         </div>
 
         <div>
-          <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-            Fecha final
+          <label htmlFor="endDate" className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+            Hasta
           </label>
           <input
             type="date"
@@ -91,7 +96,7 @@ export function FilterPanel({ filters, setFilters }: FilterPanelProps) {
             onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
             min="2005-01-01"
             max="2030-12-31"
-            className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+            className="filter-input"
           />
         </div>
       </div>

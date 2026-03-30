@@ -35,7 +35,7 @@ describe('BirdDetails', () => {
   it('should render bird details correctly', () => {
     const onBack = vi.fn();
     render(<BirdDetails bird={mockBird} onBack={onBack} />);
-    
+
     expect(screen.getByText('Paloma común')).toBeInTheDocument();
     expect(screen.getByText('Columba livia')).toBeInTheDocument();
     expect(screen.getByText('La paloma común es una especie...')).toBeInTheDocument();
@@ -46,15 +46,17 @@ describe('BirdDetails', () => {
   it('should call onBack when back button is clicked', () => {
     const onBack = vi.fn();
     render(<BirdDetails bird={mockBird} onBack={onBack} />);
-    
-    fireEvent.click(screen.getByRole('button', { name: /volver/i }));
+
+    // Click the first "Volver" button (top-left arrow)
+    const backButtons = screen.getAllByRole('button', { name: /volver/i });
+    fireEvent.click(backButtons[0]);
     expect(onBack).toHaveBeenCalled();
   });
 
   it('should render observations correctly', () => {
     render(<BirdDetails bird={mockBird} onBack={vi.fn()} />);
-    
-    expect(screen.getByText('Metropolitana')).toBeInTheDocument();
-    expect(screen.getByText('29 de febrero de 2024')).toBeInTheDocument();
+
+    expect(screen.getByText('Santiago')).toBeInTheDocument();
+    expect(screen.getByText('29 de febrero 2024')).toBeInTheDocument();
   });
 });
