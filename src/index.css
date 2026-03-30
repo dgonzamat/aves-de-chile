@@ -256,3 +256,25 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Hide scrollbar for tab overflow */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Leaflet popup override */
+.bird-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 0;
+}
+.bird-popup .leaflet-popup-content {
+  margin: 12px;
+}
+.bird-popup .leaflet-popup-tip {
+  box-shadow: none;
+}

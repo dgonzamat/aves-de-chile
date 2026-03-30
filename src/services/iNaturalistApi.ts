@@ -157,12 +157,53 @@ export class INaturalistApi {
     return 'call';
   }
 
+  async getBirdFamilies(): Promise<Array<{ id: number; name: string; commonName: string; count: number; photoUrl?: string }>> {
+    try {
+      const data = await this.fetchWithRetry('/observations/species_counts', {
+        iconic_taxa: 'Aves',
+        place_id: CHILE_PLACE_ID,
+        quality_grade: 'research',
+        locale: 'es',
+        per_page: 200,
+        hrank: 'family',
+        lrank: 'family'
+      });
+
+      if (!data?.results) return [];
+
+      return data.results
+        .filter((r: any) => r.taxon && r.taxon.rank === 'family')
+        .map((r: any) => ({
+          id: r.taxon.id,
+          name: r.taxon.name,
+          commonName: r.taxon.preferred_common_name || r.taxon.name,
+          count: r.count || 0,
+          photoUrl: r.taxon.default_photo?.medium_url?.replace('square', 'medium') || undefined
+        }))
+        .sort((a: any, b: any) => b.count - a.count);
+    } catch (error) {
+      console.error('Error fetching families:', error);
+      return [];
+    }
+  }
+
+  async getBirdsByTaxon(taxonId: number, params: {
+    per_page?: number;
+    page?: number;
+  } = {}): Promise<Bird[]> {
+    return this.getBirds({
+      ...params,
+      taxon_id: taxonId
+    });
+  }
+
   async getBirds(params: {
     per_page?: number;
     page?: number;
     order?: string;
     order_by?: string;
     q?: string;
+    taxon_id?: number;
   } = {}): Promise<Bird[]> {
     try {
       const requestParams = {
