@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { Bird as BirdIcon, Search, ChevronLeft, ChevronRight, SlidersHorizontal, X, Feather, Map as MapIcon, Grid3X3, MapPin } from 'lucide-react';
 import { INaturalistApi } from './services/iNaturalistApi';
 import { BirdCard } from './components/BirdCard';
-import { BirdDetails } from './components/BirdDetails';
-import { ObservationDetail } from './components/ObservationDetail';
 import { FilterPanel } from './components/FilterPanel';
 import { RegionView } from './components/RegionView';
 import { FamilyView } from './components/FamilyView';
-import { BirdMapView } from './components/BirdMapView';
 import { REGIONES_CHILE } from './constants';
 import type { Bird, BirdDetails as BirdDetailsType, Filters } from './types';
+
+// Lazy-loaded heavy components (Leaflet ~130KB, DOMPurify ~50KB)
+const BirdDetails = React.lazy(() => import('./components/BirdDetails').then(m => ({ default: m.BirdDetails })));
+const ObservationDetail = React.lazy(() => import('./components/ObservationDetail').then(m => ({ default: m.ObservationDetail })));
+const BirdMapView = React.lazy(() => import('./components/BirdMapView').then(m => ({ default: m.BirdMapView })));
 
 const api = new INaturalistApi();
 const BIRDS_PER_PAGE = 50;
@@ -241,10 +243,16 @@ function App() {
                   <input
                     type="text"
                     placeholder="Buscar especie..."
+                    aria-label="Buscar especie"
+                    aria-autocomplete="list"
+                    aria-expanded={showSuggestions && suggestions.length > 0}
                     value={filters.searchTerm}
                     onChange={(e) => { setFilters(prev => ({ ...prev, searchTerm: e.target.value })); setCurrentPage(1); }}
                     onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setShowSuggestions(false);
+                    }}
                     className="search-input"
                   />
                   {filters.searchTerm && (
@@ -253,7 +261,7 @@ function App() {
                     </button>
                   )}
                   {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50 animate-slide-down">
+                    <div role="listbox" className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50 animate-slide-down">
                       {suggestions.map(sp => (
                         <button
                           key={sp.id}
@@ -282,6 +290,8 @@ function App() {
                 <button
                   onClick={() => setShowFilters(!showFilters)}
                   className={`btn-icon ${showFilters ? 'active' : ''}`}
+                  aria-label="Filtros"
+                  aria-expanded={showFilters}
                 >
                   <SlidersHorizontal className="w-4 h-4" />
                   <span className="hidden sm:inline text-xs">Filtros</span>
@@ -364,6 +374,7 @@ function App() {
         )}
 
         {/* Detail view (any tab) */}
+        <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="w-10 h-10 border-[3px] rounded-full animate-spin" style={{ borderColor: 'var(--color-primary-light)', borderTopColor: 'var(--color-primary)' }} /></div>}>
         {selectedBird ? (
           <BirdDetails
             bird={selectedBird}
@@ -515,6 +526,7 @@ function App() {
             )}
           </>
         )}
+        </Suspense>
       </main>
 
       {/* Footer */}

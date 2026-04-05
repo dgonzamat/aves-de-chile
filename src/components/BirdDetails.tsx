@@ -15,7 +15,7 @@ interface BirdDetailsProps {
   onSelectSpecies?: (taxonId: number) => void;
 }
 
-export function BirdDetails({ bird, onBack, onSelectSpecies }: BirdDetailsProps) {
+export const BirdDetails = React.memo(function BirdDetails({ bird, onBack, onSelectSpecies }: BirdDetailsProps) {
   const [seasonData, setSeasonData] = useState<Record<number, number>>({});
   const [similarSpecies, setSimilarSpecies] = useState<Array<{ id: number; name: string; commonName: string; photoUrl?: string }>>([]);
   const [stats, setStats] = useState<{ totalObservations: number; totalObservers: number; firstObserved?: string; lastObserved?: string } | null>(null);
@@ -214,4 +214,4 @@ export function BirdDetails({ bird, onBack, onSelectSpecies }: BirdDetailsProps)
       </div>
     </div>
   );
-}
+});

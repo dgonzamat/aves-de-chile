@@ -4,6 +4,20 @@ import type { Bird, BirdDetails, BirdsResponse } from '../types';
 const INATURALIST_API_BASE = 'https://api.inaturalist.org/v1';
 
 export class INaturalistApi {
+  private cache = new Map<string, { data: any; timestamp: number }>();
+  private CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  private getCached(key: string): any | null {
+    const entry = this.cache.get(key);
+    if (entry && Date.now() - entry.timestamp < this.CACHE_TTL) return entry.data;
+    if (entry) this.cache.delete(key);
+    return null;
+  }
+
+  private setCache(key: string, data: any): void {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
   private async fetchWithRetry(endpoint: string, params: Record<string, any> = {}, maxRateLimitRetries = 3): Promise<any> {
     const queryParams = new URLSearchParams();
 
@@ -14,6 +28,10 @@ export class INaturalistApi {
     });
 
     const url = `${INATURALIST_API_BASE}${endpoint}?${queryParams.toString()}`;
+
+    const cached = this.getCached(url);
+    if (cached) return cached;
+
     let rateLimitAttempts = 0;
 
     while (rateLimitAttempts < maxRateLimitRetries) {
@@ -24,6 +42,7 @@ export class INaturalistApi {
         if (!data || typeof data !== 'object') {
           throw new Error('Respuesta inválida del servidor');
         }
+        this.setCache(url, data);
         return data;
       }
 
@@ -56,7 +75,7 @@ export class INaturalistApi {
     }
   }
 
-  private getPhotoUrl(photo: any): string | null {
+  private getPhotoUrl(photo: any, size: 'small' | 'medium' | 'large' = 'medium'): string | null {
     if (!photo) return null;
 
     const possibleUrls = [
@@ -67,7 +86,7 @@ export class INaturalistApi {
     ].filter(Boolean);
 
     const url = possibleUrls[0];
-    return url ? url.replace('square', 'medium') : null;
+    return url ? url.replace(/square|small|medium|large|original/, size) : null;
   }
 
   private validateObservation(obs: any): boolean {
@@ -196,7 +215,7 @@ export class INaturalistApi {
           name: r.taxon.name,
           commonName: r.taxon.preferred_common_name || r.taxon.name,
           count: r.count || 0,
-          photoUrl: this.getPhotoUrl(r.taxon.default_photo) || undefined
+          photoUrl: this.getPhotoUrl(r.taxon.default_photo, 'small') || undefined
         }))
         .sort((a: any, b: any) => b.count - a.count);
     } catch (error) {
@@ -294,7 +313,7 @@ export class INaturalistApi {
               })(),
               photos: obs.photos
                 .map(photo => {
-                  const url = this.getPhotoUrl(photo);
+                  const url = this.getPhotoUrl(photo, 'small');
                   return url ? {
                     url,
                     attribution: photo.attribution || photo.photo?.attribution || 'Autor desconocido'
@@ -330,19 +349,28 @@ export class INaturalistApi {
         throw new Error('Especie no encontrada');
       }
 
-      const [observationsData, sounds] = await Promise.all([
-        this.fetchWithRetry('/observations', {
-          taxon_id: taxonId,
-          per_page: 10,
-          order_by: 'observed_on',
-          order: 'desc',
-          photos: true,
-          sounds: true,
-          place_id: CHILE_PLACE_ID,
-          quality_grade: 'research,needs_id'
-        }),
-        this.getSoundData(taxonId)
-      ]);
+      const observationsData = await this.fetchWithRetry('/observations', {
+        taxon_id: taxonId,
+        per_page: 10,
+        order_by: 'observed_on',
+        order: 'desc',
+        photos: true,
+        sounds: true,
+        place_id: CHILE_PLACE_ID,
+        quality_grade: 'research,needs_id'
+      });
+
+      // Extract sounds from the same observations response (no extra API call)
+      const sounds = (observationsData?.results || [])
+        .filter((obs: any) => obs.sounds?.length > 0)
+        .flatMap((obs: any) => obs.sounds.map((sound: any) => ({
+          id: sound.id,
+          url: sound.file_url,
+          attribution: sound.attribution,
+          type: this.determineSoundType(sound),
+          description: sound.description,
+        })))
+        .slice(0, 3);
 
       const taxon = taxonData.results[0];
       const observations = (observationsData?.results || [])
@@ -384,7 +412,7 @@ export class INaturalistApi {
         native: Boolean(taxon.native),
         introduced: Boolean(taxon.introduced),
         threatened: Boolean(taxon.threatened),
-        defaultPhoto: this.getPhotoUrl(taxon.default_photo),
+        defaultPhoto: this.getPhotoUrl(taxon.default_photo, 'large'),
         sounds,
         observations
       };
@@ -431,7 +459,7 @@ export class INaturalistApi {
           id: t.id,
           name: t.name,
           commonName: t.preferred_common_name || t.name,
-          photoUrl: this.getPhotoUrl(t.default_photo) || undefined,
+          photoUrl: this.getPhotoUrl(t.default_photo, 'small') || undefined,
         }))
         .slice(0, 6);
     } catch {
@@ -460,7 +488,7 @@ export class INaturalistApi {
           name: r.taxon.name,
           commonName: r.taxon.preferred_common_name || r.taxon.name,
           count: r.count || 0,
-          photoUrl: this.getPhotoUrl(r.taxon.default_photo) || undefined,
+          photoUrl: this.getPhotoUrl(r.taxon.default_photo, 'small') || undefined,
         }))
         .slice(0, 10);
     } catch {
@@ -489,7 +517,7 @@ export class INaturalistApi {
           name: r.taxon.name,
           commonName: r.taxon.preferred_common_name || r.taxon.name,
           count: r.count || 0,
-          photoUrl: this.getPhotoUrl(r.taxon.default_photo) || undefined,
+          photoUrl: this.getPhotoUrl(r.taxon.default_photo, 'small') || undefined,
         }))
         .sort((a: any, b: any) => b.count - a.count);
     } catch {
@@ -499,38 +527,23 @@ export class INaturalistApi {
 
   async getSpeciesStats(taxonId: number): Promise<{ totalObservations: number; totalObservers: number; firstObserved?: string; lastObserved?: string }> {
     try {
-      const data = await this.fetchWithRetry('/observations', {
-        taxon_id: taxonId,
-        place_id: CHILE_PLACE_ID,
-        per_page: 1,
-        order_by: 'observed_on',
-        order: 'asc',
-      });
-
-      const firstObs = data?.results?.[0]?.observed_on;
-      const total = data?.total_results || 0;
-
-      const latestData = await this.fetchWithRetry('/observations', {
-        taxon_id: taxonId,
-        place_id: CHILE_PLACE_ID,
-        per_page: 1,
-        order_by: 'observed_on',
-        order: 'desc',
-      });
-
-      const lastObs = latestData?.results?.[0]?.observed_on;
-
-      const observerData = await this.fetchWithRetry('/observations/observers', {
-        taxon_id: taxonId,
-        place_id: CHILE_PLACE_ID,
-        per_page: 0,
-      });
+      const [firstData, lastData, observerData] = await Promise.all([
+        this.fetchWithRetry('/observations', {
+          taxon_id: taxonId, place_id: CHILE_PLACE_ID, per_page: 1, order_by: 'observed_on', order: 'asc',
+        }),
+        this.fetchWithRetry('/observations', {
+          taxon_id: taxonId, place_id: CHILE_PLACE_ID, per_page: 1, order_by: 'observed_on', order: 'desc',
+        }),
+        this.fetchWithRetry('/observations/observers', {
+          taxon_id: taxonId, place_id: CHILE_PLACE_ID, per_page: 0,
+        }),
+      ]);
 
       return {
-        totalObservations: total,
+        totalObservations: firstData?.total_results || 0,
         totalObservers: observerData?.total_results || 0,
-        firstObserved: firstObs,
-        lastObserved: lastObs,
+        firstObserved: firstData?.results?.[0]?.observed_on,
+        lastObserved: lastData?.results?.[0]?.observed_on,
       };
     } catch {
       return { totalObservations: 0, totalObservers: 0 };
@@ -554,7 +567,7 @@ export class INaturalistApi {
           id: t.id,
           name: t.name,
           commonName: t.preferred_common_name || t.name,
-          photoUrl: this.getPhotoUrl(t.default_photo) || undefined,
+          photoUrl: this.getPhotoUrl(t.default_photo, 'small') || undefined,
         }));
     } catch {
       return [];
