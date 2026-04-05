@@ -392,4 +392,171 @@ export class INaturalistApi {
       throw new Error(`Error al obtener detalles: ${message}`);
     }
   }
+
+  async getSeasonalData(taxonId: number): Promise<Record<number, number>> {
+    try {
+      const data = await this.fetchWithRetry('/observations/histogram', {
+        taxon_id: taxonId,
+        place_id: CHILE_PLACE_ID,
+        date_field: 'observed',
+        interval: 'month_of_year',
+      });
+      return data?.results?.month_of_year || {};
+    } catch {
+      return {};
+    }
+  }
+
+  async getSimilarSpecies(taxonId: number): Promise<Array<{ id: number; name: string; commonName: string; photoUrl?: string }>> {
+    try {
+      const taxonData = await this.fetchWithRetry(`/taxa/${taxonId}`, { locale: 'es' });
+      const taxon = taxonData?.results?.[0];
+      if (!taxon?.ancestors) return [];
+
+      const genus = taxon.ancestors.find((a: any) => a.rank === 'genus');
+      if (!genus) return [];
+
+      const siblings = await this.fetchWithRetry('/taxa', {
+        parent_id: genus.id,
+        rank: 'species',
+        locale: 'es',
+        per_page: 10,
+        is_active: true,
+      });
+
+      return (siblings?.results || [])
+        .filter((t: any) => t.id !== taxonId && t.default_photo)
+        .map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          commonName: t.preferred_common_name || t.name,
+          photoUrl: this.getPhotoUrl(t.default_photo) || undefined,
+        }))
+        .slice(0, 6);
+    } catch {
+      return [];
+    }
+  }
+
+  async getTopSpecies(month?: number): Promise<Array<{ id: number; name: string; commonName: string; count: number; photoUrl?: string }>> {
+    try {
+      const params: Record<string, any> = {
+        iconic_taxa: 'Aves',
+        place_id: CHILE_PLACE_ID,
+        quality_grade: 'research',
+        locale: 'es',
+        per_page: 10,
+      };
+      if (month) params.month = month;
+
+      const data = await this.fetchWithRetry('/observations/species_counts', params);
+      if (!data?.results) return [];
+
+      return data.results
+        .filter((r: any) => r.taxon && r.taxon.default_photo)
+        .map((r: any) => ({
+          id: r.taxon.id,
+          name: r.taxon.name,
+          commonName: r.taxon.preferred_common_name || r.taxon.name,
+          count: r.count || 0,
+          photoUrl: this.getPhotoUrl(r.taxon.default_photo) || undefined,
+        }))
+        .slice(0, 10);
+    } catch {
+      return [];
+    }
+  }
+
+  async getBirdOrders(): Promise<Array<{ id: number; name: string; commonName: string; count: number; photoUrl?: string }>> {
+    try {
+      const data = await this.fetchWithRetry('/observations/species_counts', {
+        iconic_taxa: 'Aves',
+        place_id: CHILE_PLACE_ID,
+        quality_grade: 'research',
+        locale: 'es',
+        per_page: 200,
+        hrank: 'order',
+        lrank: 'order',
+      });
+
+      if (!data?.results) return [];
+
+      return data.results
+        .filter((r: any) => r.taxon && r.taxon.id && r.taxon.name)
+        .map((r: any) => ({
+          id: r.taxon.id,
+          name: r.taxon.name,
+          commonName: r.taxon.preferred_common_name || r.taxon.name,
+          count: r.count || 0,
+          photoUrl: this.getPhotoUrl(r.taxon.default_photo) || undefined,
+        }))
+        .sort((a: any, b: any) => b.count - a.count);
+    } catch {
+      return [];
+    }
+  }
+
+  async getSpeciesStats(taxonId: number): Promise<{ totalObservations: number; totalObservers: number; firstObserved?: string; lastObserved?: string }> {
+    try {
+      const data = await this.fetchWithRetry('/observations', {
+        taxon_id: taxonId,
+        place_id: CHILE_PLACE_ID,
+        per_page: 1,
+        order_by: 'observed_on',
+        order: 'asc',
+      });
+
+      const firstObs = data?.results?.[0]?.observed_on;
+      const total = data?.total_results || 0;
+
+      const latestData = await this.fetchWithRetry('/observations', {
+        taxon_id: taxonId,
+        place_id: CHILE_PLACE_ID,
+        per_page: 1,
+        order_by: 'observed_on',
+        order: 'desc',
+      });
+
+      const lastObs = latestData?.results?.[0]?.observed_on;
+
+      const observerData = await this.fetchWithRetry('/observations/observers', {
+        taxon_id: taxonId,
+        place_id: CHILE_PLACE_ID,
+        per_page: 0,
+      });
+
+      return {
+        totalObservations: total,
+        totalObservers: observerData?.total_results || 0,
+        firstObserved: firstObs,
+        lastObserved: lastObs,
+      };
+    } catch {
+      return { totalObservations: 0, totalObservers: 0 };
+    }
+  }
+
+  async searchSpecies(query: string): Promise<Array<{ id: number; name: string; commonName: string; photoUrl?: string }>> {
+    if (!query || query.length < 2) return [];
+    try {
+      const data = await this.fetchWithRetry('/taxa/autocomplete', {
+        q: query,
+        taxon_id: 3,
+        locale: 'es',
+        per_page: 8,
+        is_active: true,
+      });
+
+      return (data?.results || [])
+        .filter((t: any) => t.rank === 'species' || t.rank === 'subspecies')
+        .map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          commonName: t.preferred_common_name || t.name,
+          photoUrl: this.getPhotoUrl(t.default_photo) || undefined,
+        }));
+    } catch {
+      return [];
+    }
+  }
 }

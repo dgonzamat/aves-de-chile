@@ -46,6 +46,9 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
+  const [topSpecies, setTopSpecies] = useState<Array<{ id: number; name: string; commonName: string; count: number; photoUrl?: string }>>([]);
+  const [suggestions, setSuggestions] = useState<Array<{ id: number; name: string; commonName: string; photoUrl?: string }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [activeTab, setActiveTab] = useState<ViewTab>('catalog');
@@ -85,6 +88,25 @@ function App() {
   useEffect(() => {
     if (showSearch && searchRef.current) searchRef.current.focus();
   }, [showSearch]);
+
+  useEffect(() => {
+    const currentMonth = new Date().getMonth() + 1;
+    api.getTopSpecies(currentMonth).then(setTopSpecies).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!filters.searchTerm || filters.searchTerm.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      api.searchSpecies(filters.searchTerm).then((results) => {
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      }).catch(() => {});
+    }, 200);
+    return () => clearTimeout(timeout);
+  }, [filters.searchTerm]);
 
   useEffect(() => {
     if (selectedBird) {
@@ -211,12 +233,40 @@ function App() {
                     placeholder="Buscar especie..."
                     value={filters.searchTerm}
                     onChange={(e) => { setFilters(prev => ({ ...prev, searchTerm: e.target.value })); setCurrentPage(1); }}
+                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     className="search-input"
                   />
                   {filters.searchTerm && (
-                    <button onClick={() => setFilters(prev => ({ ...prev, searchTerm: '' }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <button onClick={() => { setFilters(prev => ({ ...prev, searchTerm: '' })); setSuggestions([]); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                       <X className="w-4 h-4" />
                     </button>
+                  )}
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50 animate-slide-down">
+                      {suggestions.map(sp => (
+                        <button
+                          key={sp.id}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setFilters(prev => ({ ...prev, searchTerm: sp.commonName }));
+                            setShowSuggestions(false);
+                            setCurrentPage(1);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-emerald-50 transition-colors text-left"
+                        >
+                          {sp.photoUrl ? (
+                            <img src={sp.photoUrl} alt={sp.commonName} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 truncate">{sp.commonName}</p>
+                            <p className="text-[10px] text-gray-400 italic truncate">{sp.name}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
                 <button
@@ -305,7 +355,25 @@ function App() {
 
         {/* Detail view (any tab) */}
         {selectedBird ? (
-          <BirdDetails bird={selectedBird} onBack={() => setSelectedBird(null)} />
+          <BirdDetails
+            bird={selectedBird}
+            onBack={() => setSelectedBird(null)}
+            onSelectSpecies={async (taxonId) => {
+              try {
+                setLoadingDetails(true);
+                const cached = detailsCache.current.get(taxonId);
+                if (cached) { setSelectedBird(cached); return; }
+                const details = await api.getBirdDetails(taxonId);
+                detailsCache.current.set(taxonId, details);
+                setSelectedBird(details);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Error al cargar detalles');
+              } finally {
+                setLoadingDetails(false);
+              }
+            }}
+          />
         ) : selectedObservation ? (
           <ObservationDetail
             bird={selectedObservation}
@@ -317,6 +385,36 @@ function App() {
             {/* ===== CATALOG TAB ===== */}
             {activeTab === 'catalog' && (
               <>
+                {/* Top species this month */}
+                {topSpecies.length > 0 && currentPage === 1 && !filters.searchTerm && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-bold text-gray-900 mb-3">
+                      Más observadas este mes
+                    </h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                      {topSpecies.map((sp, i) => (
+                        <button
+                          key={sp.id}
+                          onClick={() => {
+                            const found = birds.find(b => b.species.id === sp.id);
+                            if (found) handleBirdSelect(found);
+                          }}
+                          className="flex-shrink-0 w-20 text-center group"
+                        >
+                          <div className="relative w-16 h-16 mx-auto rounded-full overflow-hidden border-2 border-gray-100 group-hover:border-emerald-400 transition-colors">
+                            {sp.photoUrl ? (
+                              <img src={sp.photoUrl} alt={sp.commonName} className="w-full h-full object-cover" loading="lazy" />
+                            ) : (
+                              <div className="w-full h-full bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-300">{i + 1}</div>
+                            )}
+                          </div>
+                          <p className="mt-1 text-[10px] font-semibold text-gray-600 group-hover:text-emerald-700 leading-tight line-clamp-2">{sp.commonName}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {!loadingBirds && birds.length > 0 && (
                   <div className="flex items-center justify-between mb-5">
                     <div className="results-pill">
