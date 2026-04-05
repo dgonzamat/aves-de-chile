@@ -175,28 +175,30 @@ export class INaturalistApi {
 
   async getBirdFamilies(): Promise<Array<{ id: number; name: string; commonName: string; count: number; photoUrl?: string }>> {
     try {
-      const data = await this.fetchWithRetry('/observations/species_counts', {
-        iconic_taxa: 'Aves',
-        place_id: CHILE_PLACE_ID,
-        quality_grade: 'research',
+      // Use taxa endpoint to get bird families present in Chile
+      const data = await this.fetchWithRetry('/taxa', {
+        taxon_id: 3,  // Aves
+        rank: 'family',
         locale: 'es',
         per_page: 200,
-        hrank: 'family',
-        lrank: 'family'
+        is_active: true
       });
 
       if (!data?.results) return [];
 
-      return data.results
-        .filter((r: any) => r.taxon && r.taxon.rank === 'family')
-        .map((r: any) => ({
-          id: r.taxon.id,
-          name: r.taxon.name,
-          commonName: r.taxon.preferred_common_name || r.taxon.name,
-          count: r.count || 0,
-          photoUrl: this.getPhotoUrl(r.taxon.default_photo) || undefined
+      const families = data.results
+        .filter((t: any) => t && t.id && t.name)
+        .map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          commonName: t.preferred_common_name || t.name,
+          count: t.observations_count || 0,
+          photoUrl: this.getPhotoUrl(t.default_photo) || undefined
         }))
+        .filter((f: any) => f.count > 0)
         .sort((a: any, b: any) => b.count - a.count);
+
+      return families;
     } catch (error) {
       console.error('Error fetching families:', error);
       return [];
@@ -233,6 +235,7 @@ export class INaturalistApi {
         order_by: params.order_by || 'votes',
         order: params.order || 'desc',
         photos: true,
+        geo: true,
         place_id: CHILE_PLACE_ID,
         view: 'species',
         ...params
