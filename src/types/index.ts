@@ -78,6 +78,12 @@ export interface Filters {
   region: string;
   searchTerm: string;
   conservationStatus: string;
+  endemic: string;
+  threatened: string;
+  native: string;
+  qualityGrade: string;
+  month: string;
+  orderBy: string;
 }
 
 export const CONSERVATION_STATUS = [

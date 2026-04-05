@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bird as BirdIcon, Search, ChevronLeft, ChevronRight, ArrowUpDown, SlidersHorizontal, X, Feather, Map as MapIcon, Grid3X3, MapPin } from 'lucide-react';
+import { Bird as BirdIcon, Search, ChevronLeft, ChevronRight, SlidersHorizontal, X, Feather, Map as MapIcon, Grid3X3, MapPin } from 'lucide-react';
 import { INaturalistApi } from './services/iNaturalistApi';
 import { BirdCard } from './components/BirdCard';
 import { BirdDetails } from './components/BirdDetails';
@@ -14,8 +14,6 @@ import type { Bird, BirdDetails as BirdDetailsType, Filters } from './types';
 const api = new INaturalistApi();
 const BIRDS_PER_PAGE = 50;
 
-type SortOrder = 'asc' | 'desc';
-type SortType = 'alphabetical' | 'taxonomic';
 type ViewTab = 'catalog' | 'regions' | 'families' | 'map';
 
 const TABS: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
@@ -48,8 +46,6 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [sortType, setSortType] = useState<SortType>('alphabetical');
   const [showFilters, setShowFilters] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [activeTab, setActiveTab] = useState<ViewTab>('catalog');
@@ -61,11 +57,22 @@ function App() {
     region: '',
     searchTerm: '',
     conservationStatus: '',
+    endemic: '',
+    threatened: '',
+    native: '',
+    qualityGrade: '',
+    month: '',
+    orderBy: 'votes',
   });
 
   const activeFilterCount = [
     filters.region,
     filters.conservationStatus,
+    filters.endemic,
+    filters.threatened,
+    filters.native,
+    filters.qualityGrade,
+    filters.month,
     filters.startDate !== '2005-01-01' ? filters.startDate : '',
     filters.endDate !== '2026-12-31' ? filters.endDate : '',
   ].filter(Boolean).length;
@@ -97,39 +104,32 @@ function App() {
           ? REGIONES_CHILE.find(r => r.id === filters.region)
           : null;
 
-        const data = await api.getBirds({
-          q: filters.searchTerm,
+        const apiParams: Parameters<typeof api.getBirds>[0] = {
+          q: filters.searchTerm || undefined,
           per_page: BIRDS_PER_PAGE,
           page: currentPage,
-          order: sortOrder,
-          order_by: sortType === 'taxonomic' ? 'species' : 'views',
-          ...(regionCoords ? { lat: regionCoords.lat, lng: regionCoords.lng, radius: 150 } : {})
-        });
+          order: 'desc',
+          order_by: filters.orderBy || 'votes',
+          ...(regionCoords ? { lat: regionCoords.lat, lng: regionCoords.lng, radius: 150 } : {}),
+          ...(filters.endemic ? { endemic: filters.endemic === 'true' } : {}),
+          ...(filters.threatened ? { threatened: filters.threatened === 'true' } : {}),
+          ...(filters.native === 'native' ? { native: true } : {}),
+          ...(filters.native === 'introduced' ? { introduced: true } : {}),
+          ...(filters.qualityGrade ? { quality_grade: filters.qualityGrade } : {}),
+          ...(filters.month ? { month: Number(filters.month) } : {}),
+          ...(filters.startDate !== '2005-01-01' ? { d1: filters.startDate } : {}),
+          ...(filters.endDate !== '2026-12-31' ? { d2: filters.endDate } : {}),
+        };
 
-        const filteredData = data.filter(bird => {
-          const observationDate = new Date(bird.observedOn);
-          const meetsDateRange = observationDate >= new Date(filters.startDate) &&
-                               observationDate <= new Date(filters.endDate);
-          const meetsConservationStatus = !filters.conservationStatus ||
-                                        bird.species.conservationStatus === filters.conservationStatus;
-          return meetsDateRange && meetsConservationStatus;
-        });
+        const data = await api.getBirds(apiParams);
 
-        const sortedData = [...filteredData].sort((a, b) => {
-          if (sortType === 'taxonomic') {
-            return sortOrder === 'asc'
-              ? a.species.name.localeCompare(b.species.name)
-              : b.species.name.localeCompare(a.species.name);
-          }
-          const nameA = a.species.commonName.toLowerCase();
-          const nameB = b.species.commonName.toLowerCase();
-          return sortOrder === 'asc'
-            ? nameA.localeCompare(nameB)
-            : nameB.localeCompare(nameA);
-        });
+        // Conservation status is not a server-side param, filter client-side
+        const filteredData = filters.conservationStatus
+          ? data.filter(bird => bird.species.conservationStatus === filters.conservationStatus)
+          : data;
 
-        setBirds(sortedData);
-        setTotalResults(sortedData.length);
+        setBirds(filteredData);
+        setTotalResults(filteredData.length);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar los datos');
@@ -140,7 +140,7 @@ function App() {
 
     const debounceTimeout = setTimeout(fetchBirds, 300);
     return () => clearTimeout(debounceTimeout);
-  }, [filters, currentPage, sortOrder, sortType]);
+  }, [filters, currentPage]);
 
   const totalPages = Math.ceil(totalResults / BIRDS_PER_PAGE);
 
@@ -172,23 +172,11 @@ function App() {
     }
   }, []);
 
-  const toggleSort = () => {
-    if (sortType === 'alphabetical' && sortOrder === 'asc') setSortOrder('desc');
-    else if (sortType === 'alphabetical') { setSortType('taxonomic'); setSortOrder('asc'); }
-    else if (sortType === 'taxonomic' && sortOrder === 'asc') setSortOrder('desc');
-    else { setSortType('alphabetical'); setSortOrder('asc'); }
-  };
-
-  const sortLabel = sortType === 'alphabetical'
-    ? `A-Z ${sortOrder === 'asc' ? '\u2191' : '\u2193'}`
-    : `Tax. ${sortOrder === 'asc' ? '\u2191' : '\u2193'}`;
-
   const handleTabChange = (tab: ViewTab) => {
     setActiveTab(tab);
     setSelectedBird(null);
     setSelectedObservation(null);
     if (tab !== 'catalog' && tab !== 'map') {
-      setShowFilters(false);
       setShowSearch(false);
     }
   };
@@ -231,26 +219,18 @@ function App() {
                     </button>
                   )}
                 </div>
-                {activeTab === 'catalog' && (
-                  <>
-                    <button onClick={toggleSort} className="btn-icon" title="Ordenar">
-                      <ArrowUpDown className="w-4 h-4" />
-                      <span className="hidden sm:inline text-xs">{sortLabel}</span>
-                    </button>
-                    <button
-                      onClick={() => setShowFilters(!showFilters)}
-                      className={`btn-icon ${showFilters ? 'active' : ''}`}
-                    >
-                      <SlidersHorizontal className="w-4 h-4" />
-                      <span className="hidden sm:inline text-xs">Filtros</span>
-                      {activeFilterCount > 0 && (
-                        <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-white" style={{ background: 'var(--color-primary)' }}>
-                          {activeFilterCount}
-                        </span>
-                      )}
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`btn-icon ${showFilters ? 'active' : ''}`}
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span className="hidden sm:inline text-xs">Filtros</span>
+                  {activeFilterCount > 0 && (
+                    <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-white" style={{ background: 'var(--color-primary)' }}>
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
               </div>
             )}
           </div>
@@ -297,7 +277,7 @@ function App() {
       {/* Main */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Filters (catalog only) */}
-        {showFilters && activeTab === 'catalog' && (
+        {showFilters && (
           <div className="animate-slide-down">
             <FilterPanel filters={filters} setFilters={setFilters} />
           </div>
@@ -361,7 +341,7 @@ function App() {
                       No encontramos especies con estos criterios.
                     </p>
                     <button
-                      onClick={() => setFilters({ startDate: '2005-01-01', endDate: '2026-12-31', region: '', searchTerm: '', conservationStatus: '' })}
+                      onClick={() => setFilters({ startDate: '2005-01-01', endDate: '2026-12-31', region: '', searchTerm: '', conservationStatus: '', endemic: '', threatened: '', native: '', qualityGrade: '', month: '', orderBy: 'votes' })}
                       className="btn-primary mt-6"
                     >
                       Limpiar filtros

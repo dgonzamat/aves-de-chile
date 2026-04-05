@@ -224,11 +224,19 @@ export class INaturalistApi {
     lat?: number;
     lng?: number;
     radius?: number;
+    endemic?: boolean;
+    threatened?: boolean;
+    native?: boolean;
+    introduced?: boolean;
+    quality_grade?: string;
+    month?: number;
+    d1?: string;
+    d2?: string;
   } = {}): Promise<Bird[]> {
     try {
-      const requestParams = {
+      const requestParams: Record<string, any> = {
         iconic_taxa: 'Aves',
-        quality_grade: 'research,needs_id',
+        quality_grade: params.quality_grade || 'research,needs_id',
         locale: 'es',
         per_page: params.per_page || 50,
         order_by: params.order_by || 'votes',
@@ -237,8 +245,20 @@ export class INaturalistApi {
         geo: true,
         place_id: CHILE_PLACE_ID,
         view: 'species',
-        ...params
       };
+
+      // Copy simple params
+      if (params.page) requestParams.page = params.page;
+      if (params.q) requestParams.q = params.q;
+      if (params.taxon_id) requestParams.taxon_id = params.taxon_id;
+      if (params.lat) { requestParams.lat = params.lat; requestParams.lng = params.lng; requestParams.radius = params.radius; }
+      if (params.month) requestParams.month = params.month;
+      if (params.d1) requestParams.d1 = params.d1;
+      if (params.d2) requestParams.d2 = params.d2;
+      if (params.endemic !== undefined) requestParams.endemic = params.endemic;
+      if (params.threatened !== undefined) requestParams.threatened = params.threatened;
+      if (params.native !== undefined) requestParams.native = params.native;
+      if (params.introduced !== undefined) requestParams.introduced = params.introduced;
 
       const data = await this.fetchWithRetry('/observations', requestParams);
 

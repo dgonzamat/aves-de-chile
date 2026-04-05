@@ -28,3 +28,24 @@ export const REGIONES_CHILE = [
   { id: 'XI', nombre: 'Aysén', lat: -45.5712, lng: -72.0685 },
   { id: 'XII', nombre: 'Magallanes', lat: -53.1638, lng: -70.9171 }
 ];
+
+export const MESES = [
+  { id: '1', nombre: 'Enero' },
+  { id: '2', nombre: 'Febrero' },
+  { id: '3', nombre: 'Marzo' },
+  { id: '4', nombre: 'Abril' },
+  { id: '5', nombre: 'Mayo' },
+  { id: '6', nombre: 'Junio' },
+  { id: '7', nombre: 'Julio' },
+  { id: '8', nombre: 'Agosto' },
+  { id: '9', nombre: 'Septiembre' },
+  { id: '10', nombre: 'Octubre' },
+  { id: '11', nombre: 'Noviembre' },
+  { id: '12', nombre: 'Diciembre' },
+];
+
+export const ORDER_OPTIONS = [
+  { id: 'votes', nombre: 'Más populares' },
+  { id: 'observed_on', nombre: 'Más recientes' },
+  { id: 'created_at', nombre: 'Recién agregadas' },
+];
