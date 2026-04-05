@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bird as BirdIcon, Search, ChevronLeft, ChevronRight, ArrowUpDown, SlidersHorizontal, X, Feather, Map, Grid3X3, MapPin } from 'lucide-react';
+import { Bird as BirdIcon, Search, ChevronLeft, ChevronRight, ArrowUpDown, SlidersHorizontal, X, Feather, Map as MapIcon, Grid3X3, MapPin } from 'lucide-react';
 import { INaturalistApi } from './services/iNaturalistApi';
 import { BirdCard } from './components/BirdCard';
 import { BirdDetails } from './components/BirdDetails';
@@ -21,7 +21,7 @@ const TABS: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
   { id: 'catalog', label: 'Catálogo', icon: <Grid3X3 className="w-4 h-4" /> },
   { id: 'regions', label: 'Regiones', icon: <MapPin className="w-4 h-4" /> },
   { id: 'families', label: 'Familias', icon: <Feather className="w-4 h-4" /> },
-  { id: 'map', label: 'Mapa', icon: <Map className="w-4 h-4" /> },
+  { id: 'map', label: 'Mapa', icon: <MapIcon className="w-4 h-4" /> },
 ];
 
 function SkeletonCard() {
