@@ -1,5 +1,3 @@
-import { REGIONES_CHILE } from '../constants';
-
 export interface Bird {
   id: number;
   species: {

@@ -300,7 +300,7 @@ export class INaturalistApi {
       ]);
 
       const taxon = taxonData.results[0];
-      const observations = observationsData.results
+      const observations = (observationsData?.results || [])
         .map(obs => ({
           id: obs.id,
           location: {

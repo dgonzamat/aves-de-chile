@@ -27,10 +27,16 @@ export function FamilyView({ onSelectBird }: FamilyViewProps) {
 
   useEffect(() => {
     async function fetchFamilies() {
-      setLoading(true);
-      const data = await api.getBirdFamilies();
-      setFamilies(data);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const data = await api.getBirdFamilies();
+        setFamilies(data);
+      } catch (err) {
+        console.error('Error fetching families:', err);
+        setFamilies([]);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchFamilies();
   }, []);

@@ -12,46 +12,40 @@ interface BirdMapViewProps {
 const CHILE_CENTER: [number, number] = [-35.5, -71.5];
 const CHILE_ZOOM = 4;
 
-// Fix Leaflet default icon issue with bundlers
-const defaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const birdIcon = L.divIcon({
-  className: 'bird-marker',
-  html: `<div style="
-    width: 32px; height: 32px;
-    background: #1b6b4a;
-    border: 3px solid white;
-    border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    display: flex; align-items: center; justify-content: center;
-  ">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-      <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
-      <line x1="16" y1="8" x2="2" y2="22"/>
-      <line x1="17.5" y1="15" x2="9" y2="15"/>
-    </svg>
-  </div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -18],
-});
+function createBirdIcon() {
+  return L.divIcon({
+    className: 'bird-marker',
+    html: `<div style="
+      width: 32px; height: 32px;
+      background: #1b6b4a;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      display: flex; align-items: center; justify-content: center;
+    ">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+        <line x1="16" y1="8" x2="2" y2="22"/>
+        <line x1="17.5" y1="15" x2="9" y2="15"/>
+      </svg>
+    </div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18],
+  });
+}
 
 export function BirdMapView({ birds, onSelectBird, loading }: BirdMapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
+  const birdIconRef = useRef<L.DivIcon | null>(null);
 
   // Init map
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
+
+    birdIconRef.current = createBirdIcon();
 
     const map = L.map(mapRef.current, {
       zoomControl: false,
@@ -84,7 +78,7 @@ export function BirdMapView({ birds, onSelectBird, loading }: BirdMapViewProps) 
 
       const marker = L.marker(
         [bird.location.latitude, bird.location.longitude],
-        { icon: birdIcon }
+        { icon: birdIconRef.current! }
       );
 
       const popupContent = `
