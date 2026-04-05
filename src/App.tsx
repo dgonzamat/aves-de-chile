@@ -3,6 +3,7 @@ import { Bird as BirdIcon, Search, ChevronLeft, ChevronRight, ArrowUpDown, Slide
 import { INaturalistApi } from './services/iNaturalistApi';
 import { BirdCard } from './components/BirdCard';
 import { BirdDetails } from './components/BirdDetails';
+import { ObservationDetail } from './components/ObservationDetail';
 import { FilterPanel } from './components/FilterPanel';
 import { RegionView } from './components/RegionView';
 import { FamilyView } from './components/FamilyView';
@@ -41,6 +42,7 @@ function SkeletonCard() {
 function App() {
   const [birds, setBirds] = useState<Bird[]>([]);
   const [selectedBird, setSelectedBird] = useState<BirdDetailsType | null>(null);
+  const [selectedObservation, setSelectedObservation] = useState<Bird | null>(null);
   const [loadingBirds, setLoadingBirds] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,14 +141,20 @@ function App() {
     }
   };
 
-  const handleBirdSelect = useCallback(async (bird: Bird) => {
+  const handleBirdSelect = useCallback((bird: Bird) => {
+    setSelectedObservation(bird);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleViewSpecies = useCallback(async (bird: Bird) => {
     const cached = detailsCache.current.get(bird.species.id);
-    if (cached) { setSelectedBird(cached); return; }
+    if (cached) { setSelectedBird(cached); setSelectedObservation(null); return; }
     try {
       setLoadingDetails(true);
       const details = await api.getBirdDetails(bird.species.id);
       detailsCache.current.set(bird.species.id, details);
       setSelectedBird(details);
+      setSelectedObservation(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar los detalles');
     } finally {
@@ -168,6 +176,7 @@ function App() {
   const handleTabChange = (tab: ViewTab) => {
     setActiveTab(tab);
     setSelectedBird(null);
+    setSelectedObservation(null);
     if (tab !== 'catalog' && tab !== 'map') {
       setShowFilters(false);
       setShowSearch(false);
@@ -184,7 +193,7 @@ function App() {
           <div className="flex items-center justify-between h-14">
             <div
               className="flex items-center gap-3 cursor-pointer"
-              onClick={() => { setSelectedBird(null); setActiveTab('catalog'); }}
+              onClick={() => { setSelectedBird(null); setSelectedObservation(null); setActiveTab('catalog'); }}
             >
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-primary)' }}>
                 <Feather className="w-4 h-4 text-white" />
@@ -305,6 +314,12 @@ function App() {
         {/* Detail view (any tab) */}
         {selectedBird ? (
           <BirdDetails bird={selectedBird} onBack={() => setSelectedBird(null)} />
+        ) : selectedObservation ? (
+          <ObservationDetail
+            bird={selectedObservation}
+            onBack={() => setSelectedObservation(null)}
+            onViewSpecies={() => handleViewSpecies(selectedObservation)}
+          />
         ) : (
           <>
             {/* ===== CATALOG TAB ===== */}
