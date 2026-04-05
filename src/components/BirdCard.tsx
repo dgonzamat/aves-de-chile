@@ -9,7 +9,7 @@ interface BirdCardProps {
   onClick?: () => void;
 }
 
-export function BirdCard({ bird, onClick }: BirdCardProps) {
+export const BirdCard = React.memo(function BirdCard({ bird, onClick }: BirdCardProps) {
   const [imgLoaded, setImgLoaded] = useState(false);
 
   return (
@@ -24,6 +24,7 @@ export function BirdCard({ bird, onClick }: BirdCardProps) {
             alt={bird.species.commonName}
             className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
             loading="lazy"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             onLoad={() => setImgLoaded(true)}
           />
           {/* Gradient overlay */}
@@ -78,4 +79,4 @@ export function BirdCard({ bird, onClick }: BirdCardProps) {
       </div>
     </div>
   );
-}
+});

@@ -18,7 +18,7 @@ interface FamilyViewProps {
   onSelectBird: (bird: Bird) => void;
 }
 
-export function FamilyView({ onSelectBird }: FamilyViewProps) {
+export const FamilyView = React.memo(function FamilyView({ onSelectBird }: FamilyViewProps) {
   const [families, setFamilies] = useState<FamilyInfo[]>([]);
   const [selectedFamily, setSelectedFamily] = useState<FamilyInfo | null>(null);
   const [familyBirds, setFamilyBirds] = useState<Bird[]>([]);
@@ -153,4 +153,4 @@ export function FamilyView({ onSelectBird }: FamilyViewProps) {
       </div>
     </div>
   );
-}
+});

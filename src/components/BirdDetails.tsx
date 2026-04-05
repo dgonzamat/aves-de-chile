@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { ArrowLeft, MapPin, Calendar, ExternalLink, Volume2, Music, Shield, Globe } from 'lucide-react';
 import type { BirdDetails as BirdDetailsType } from '../types';
 import { format } from 'date-fns';
@@ -75,7 +76,7 @@ export function BirdDetails({ bird, onBack }: BirdDetailsProps) {
             <div className="bg-white rounded-2xl p-5 sm:p-6" style={{ boxShadow: 'var(--card-shadow)' }}>
               <h3 className="text-base font-bold text-gray-900 mb-3">Descripción</h3>
               <p className="text-sm text-gray-600 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: bird.wikipediaSummary }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bird.wikipediaSummary) }}
               />
               {bird.wikipediaUrl && (
                 <a

@@ -80,6 +80,16 @@ function App() {
   }, [showSearch]);
 
   useEffect(() => {
+    if (selectedBird) {
+      document.title = `${selectedBird.commonName} | Aves de Chile`;
+    } else if (selectedObservation) {
+      document.title = `${selectedObservation.species.commonName} - Avistamiento | Aves de Chile`;
+    } else {
+      document.title = 'Aves de Chile | iNaturalist';
+    }
+  }, [selectedBird, selectedObservation]);
+
+  useEffect(() => {
     async function fetchBirds() {
       try {
         setLoadingBirds(true);
@@ -246,10 +256,12 @@ function App() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide">
+          <div className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide" role="tablist">
             {TABS.map(tab => (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
                 onClick={() => handleTabChange(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-all ${
                   activeTab === tab.id
@@ -364,7 +376,7 @@ function App() {
                     </div>
                     {totalPages > 1 && (
                       <div className="mt-8 flex items-center justify-center gap-3">
-                        <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn">
+                        <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn" aria-label="Página anterior">
                           <ChevronLeft className="w-5 h-5" />
                         </button>
                         {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
@@ -386,7 +398,7 @@ function App() {
                             </button>
                           );
                         })}
-                        <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="pagination-btn">
+                        <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="pagination-btn" aria-label="Página siguiente">
                           <ChevronRight className="w-5 h-5" />
                         </button>
                       </div>

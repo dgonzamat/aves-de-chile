@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, MapPin, Calendar, Eye, ExternalLink, Feather } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Eye, ExternalLink, Feather, Share2 } from 'lucide-react';
 import type { Bird } from '../types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -131,6 +131,21 @@ export function ObservationDetail({ bird, onBack, onViewSpecies }: ObservationDe
             <ExternalLink className="w-4 h-4" />
             Ver en iNaturalist
           </a>
+
+          {typeof navigator.share === 'function' && (
+            <button
+              onClick={() => navigator.share({
+                title: `${bird.species.commonName} - Aves de Chile`,
+                text: `Avistamiento de ${bird.species.commonName} (${bird.species.name}) en ${bird.location.placeGuess || bird.location.region}`,
+                url: `https://www.inaturalist.org/observations/${bird.id}`
+              }).catch(() => {})}
+              className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-sm font-semibold border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              <Share2 className="w-4 h-4" />
+              Compartir
+            </button>
+          )}
 
           <button
             onClick={onBack}

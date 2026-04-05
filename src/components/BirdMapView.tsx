@@ -82,21 +82,39 @@ export function BirdMapView({ birds, onSelectBird, loading }: BirdMapViewProps) 
         { icon: birdIconRef.current! }
       );
 
-      const popupContent = `
-        <div style="font-family: 'Plus Jakarta Sans', system-ui; min-width: 180px;">
-          ${bird.photos[0] ? `<img src="${bird.photos[0].url}" style="width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:8px;" />` : ''}
-          <div style="font-weight:700;font-size:13px;color:#111;">${bird.species.commonName}</div>
-          <div style="font-size:11px;color:#888;font-style:italic;">${bird.species.name}</div>
-          <div style="font-size:11px;color:#666;margin-top:4px;">${bird.location.placeGuess || bird.location.region}</div>
-          <button onclick="window.__selectBird(${bird.id})" style="
-            margin-top:8px;width:100%;padding:6px;
-            background:#1b6b4a;color:white;border:none;border-radius:8px;
-            font-size:12px;font-weight:600;cursor:pointer;
-          ">Ver detalles</button>
-        </div>
-      `;
+      const container = document.createElement('div');
+      container.style.cssText = 'font-family: Plus Jakarta Sans, system-ui; min-width: 180px;';
 
-      marker.bindPopup(popupContent, {
+      if (bird.photos[0]) {
+        const img = document.createElement('img');
+        img.src = bird.photos[0].url;
+        img.alt = bird.species.commonName;
+        img.style.cssText = 'width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:8px;';
+        container.appendChild(img);
+      }
+
+      const name = document.createElement('div');
+      name.textContent = bird.species.commonName;
+      name.style.cssText = 'font-weight:700;font-size:13px;color:#111;';
+      container.appendChild(name);
+
+      const sciName = document.createElement('div');
+      sciName.textContent = bird.species.name;
+      sciName.style.cssText = 'font-size:11px;color:#888;font-style:italic;';
+      container.appendChild(sciName);
+
+      const location = document.createElement('div');
+      location.textContent = bird.location.placeGuess || bird.location.region;
+      location.style.cssText = 'font-size:11px;color:#666;margin-top:4px;';
+      container.appendChild(location);
+
+      const btn = document.createElement('button');
+      btn.textContent = 'Ver detalles';
+      btn.style.cssText = 'margin-top:8px;width:100%;padding:6px;background:#1b6b4a;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;';
+      btn.addEventListener('click', () => window.__selectBird?.(bird.id));
+      container.appendChild(btn);
+
+      marker.bindPopup(container, {
         maxWidth: 220,
         className: 'bird-popup',
       });
@@ -111,7 +129,7 @@ export function BirdMapView({ birds, onSelectBird, loading }: BirdMapViewProps) 
       const bird = birds.find(b => b.id === id);
       if (bird) onSelectBird(bird);
     };
-    return () => { delete (window as any).__selectBird; };
+    return () => { (window as any).__selectBird = undefined; };
   }, [birds, onSelectBird]);
 
   return (
@@ -120,7 +138,7 @@ export function BirdMapView({ birds, onSelectBird, loading }: BirdMapViewProps) 
         <div>
           <h2 className="text-lg font-bold text-gray-900">Mapa de Observaciones</h2>
           <p className="text-sm text-gray-500">
-            {loading ? 'Cargando...' : `${birds.length} observaciones en Chile`}
+            {loading ? 'Cargando...' : birds.length === 0 ? 'Sin observaciones con ubicación' : `${birds.length} observaciones en Chile`}
           </p>
         </div>
       </div>

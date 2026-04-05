@@ -30,7 +30,7 @@ const REGION_DESCRIPTIONS: Record<string, string> = {
   'XII': 'Patagonia austral, pingüinos',
 };
 
-export function RegionView({ onSelectBird, birds, loading, filters, setFilters }: RegionViewProps) {
+export const RegionView = React.memo(function RegionView({ onSelectBird, birds, loading, filters, setFilters }: RegionViewProps) {
   const selectedRegion = filters.region;
 
   if (!selectedRegion) {
@@ -93,4 +93,4 @@ export function RegionView({ onSelectBird, birds, loading, filters, setFilters }
       </div>
     </div>
   );
-}
+});
