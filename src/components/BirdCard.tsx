@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Calendar, Eye } from 'lucide-react';
+import { MapPin, Calendar, Eye, Feather } from 'lucide-react';
 import type { Bird } from '../types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -11,13 +11,19 @@ interface BirdCardProps {
 
 export const BirdCard = React.memo(function BirdCard({ bird, onClick }: BirdCardProps) {
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div className="bird-card group animate-fade-in" onClick={onClick}>
       {bird.photos[0] && (
         <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-          {!imgLoaded && (
+          {!imgLoaded && !imgError && (
             <div className="absolute inset-0 skeleton" />
+          )}
+          {imgError && (
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center">
+              <Feather className="w-10 h-10 text-emerald-300" />
+            </div>
           )}
           <img
             src={bird.photos[0].url}
@@ -26,6 +32,7 @@ export const BirdCard = React.memo(function BirdCard({ bird, onClick }: BirdCard
             loading="lazy"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             onLoad={() => setImgLoaded(true)}
+            onError={() => { setImgError(true); setImgLoaded(true); }}
           />
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

@@ -118,6 +118,11 @@ function App() {
     }
   }, [selectedBird, selectedObservation]);
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters.region, filters.conservationStatus, filters.endemic, filters.threatened, filters.native, filters.qualityGrade, filters.month, filters.startDate, filters.endDate, filters.orderBy]);
+
   useEffect(() => {
     async function fetchBirds() {
       try {
@@ -143,7 +148,7 @@ function App() {
           ...(filters.endDate !== '2026-12-31' ? { d2: filters.endDate } : {}),
         };
 
-        const data = await api.getBirds(apiParams);
+        const { birds: data, totalResults: apiTotal } = await api.getBirds(apiParams);
 
         // Conservation status is not a server-side param, filter client-side
         const filteredData = filters.conservationStatus
@@ -151,7 +156,7 @@ function App() {
           : data;
 
         setBirds(filteredData);
-        setTotalResults(filteredData.length);
+        setTotalResults(filters.conservationStatus ? filteredData.length : apiTotal);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar los datos');
@@ -178,21 +183,26 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const handleViewSpecies = useCallback(async (bird: Bird) => {
-    const cached = detailsCache.current.get(bird.species.id);
-    if (cached) { setSelectedBird(cached); setSelectedObservation(null); return; }
+  const navigateToSpecies = useCallback(async (taxonId: number) => {
+    const cached = detailsCache.current.get(taxonId);
+    if (cached) { setSelectedBird(cached); setSelectedObservation(null); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     try {
       setLoadingDetails(true);
-      const details = await api.getBirdDetails(bird.species.id);
-      detailsCache.current.set(bird.species.id, details);
+      const details = await api.getBirdDetails(taxonId);
+      detailsCache.current.set(taxonId, details);
       setSelectedBird(details);
       setSelectedObservation(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar los detalles');
     } finally {
       setLoadingDetails(false);
     }
   }, []);
+
+  const handleViewSpecies = useCallback(async (bird: Bird) => {
+    navigateToSpecies(bird.species.id);
+  }, [navigateToSpecies]);
 
   const handleTabChange = (tab: ViewTab) => {
     setActiveTab(tab);
@@ -358,21 +368,7 @@ function App() {
           <BirdDetails
             bird={selectedBird}
             onBack={() => setSelectedBird(null)}
-            onSelectSpecies={async (taxonId) => {
-              try {
-                setLoadingDetails(true);
-                const cached = detailsCache.current.get(taxonId);
-                if (cached) { setSelectedBird(cached); return; }
-                const details = await api.getBirdDetails(taxonId);
-                detailsCache.current.set(taxonId, details);
-                setSelectedBird(details);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              } catch (err) {
-                setError(err instanceof Error ? err.message : 'Error al cargar detalles');
-              } finally {
-                setLoadingDetails(false);
-              }
-            }}
+            onSelectSpecies={navigateToSpecies}
           />
         ) : selectedObservation ? (
           <ObservationDetail
@@ -395,10 +391,7 @@ function App() {
                       {topSpecies.map((sp, i) => (
                         <button
                           key={sp.id}
-                          onClick={() => {
-                            const found = birds.find(b => b.species.id === sp.id);
-                            if (found) handleBirdSelect(found);
-                          }}
+                          onClick={() => navigateToSpecies(sp.id)}
                           className="flex-shrink-0 w-20 text-center group"
                         >
                           <div className="relative w-16 h-16 mx-auto rounded-full overflow-hidden border-2 border-gray-100 group-hover:border-emerald-400 transition-colors">

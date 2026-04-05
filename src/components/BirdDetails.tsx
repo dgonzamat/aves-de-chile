@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DOMPurify from 'dompurify';
-import { ArrowLeft, MapPin, Calendar, ExternalLink, Volume2, Music, Shield, Globe, Eye, Users, BarChart3 } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, ExternalLink, Volume2, Music, Shield, Feather, Eye, Users, BarChart3 } from 'lucide-react';
 import { INaturalistApi } from '../services/iNaturalistApi';
 import { SeasonChart } from './SeasonChart';
 import type { BirdDetails as BirdDetailsType } from '../types';
@@ -41,7 +41,7 @@ export function BirdDetails({ bird, onBack, onSelectSpecies }: BirdDetailsProps)
           <img src={bird.defaultPhoto} alt={bird.commonName} className="w-full h-56 sm:h-72 md:h-96 object-cover" />
         ) : (
           <div className="w-full h-56 sm:h-72 bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center">
-            <Globe className="w-16 h-16 text-emerald-300" />
+            <Feather className="w-16 h-16 text-emerald-300" />
           </div>
         )}
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
@@ -140,7 +140,7 @@ export function BirdDetails({ bird, onBack, onSelectSpecies }: BirdDetailsProps)
                       </div>
                     ) : (
                       <div className="aspect-square rounded-xl bg-gray-100 flex items-center justify-center mb-1.5">
-                        <Globe className="w-6 h-6 text-gray-300" />
+                        <Feather className="w-6 h-6 text-gray-300" />
                       </div>
                     )}
                     <p className="text-[11px] font-semibold text-gray-700 group-hover:text-emerald-700 leading-tight">{sp.commonName}</p>

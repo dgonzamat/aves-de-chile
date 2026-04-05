@@ -51,11 +51,8 @@ export const FamilyView = React.memo(function FamilyView({ onSelectBird }: Famil
     setLevel('families');
     setLoadingFamilies(true);
     try {
-      const data = await api.getBirdFamilies();
-      // Filter families by fetching those under this order
-      const familyData = await api.getBirdsByTaxon(order.id, { per_page: 0 });
-      // Use species_counts to get families under this order
-      setFamilies(data); // Show all families for now, API limitation
+      const data = await api.getBirdFamilies(order.id);
+      setFamilies(data);
     } catch {
       setFamilies([]);
     } finally {
@@ -68,7 +65,7 @@ export const FamilyView = React.memo(function FamilyView({ onSelectBird }: Famil
     setLevel('species');
     setLoadingBirds(true);
     try {
-      const birds = await api.getBirdsByTaxon(family.id, { per_page: 50 });
+      const { birds } = await api.getBirdsByTaxon(family.id, { per_page: 50 });
       setFamilyBirds(birds);
     } catch {
       setFamilyBirds([]);

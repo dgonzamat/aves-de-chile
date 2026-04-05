@@ -278,3 +278,10 @@
 .bird-popup .leaflet-popup-tip {
   box-shadow: none;
 }
+
+/* Show photo attribution on touch devices */
+@media (hover: none) {
+  .bird-card .photo-attribution {
+    transform: translateY(0);
+  }
+}

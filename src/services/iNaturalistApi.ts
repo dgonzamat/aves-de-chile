@@ -1,5 +1,5 @@
 import { CHILE_PLACE_ID, REGIONES_CHILE } from '../constants';
-import type { Bird, BirdDetails } from '../types';
+import type { Bird, BirdDetails, BirdsResponse } from '../types';
 
 const INATURALIST_API_BASE = 'https://api.inaturalist.org/v1';
 
@@ -174,7 +174,7 @@ export class INaturalistApi {
     return 'call';
   }
 
-  async getBirdFamilies(): Promise<Array<{ id: number; name: string; commonName: string; count: number; photoUrl?: string }>> {
+  async getBirdFamilies(taxonId?: number): Promise<Array<{ id: number; name: string; commonName: string; count: number; photoUrl?: string }>> {
     try {
       const data = await this.fetchWithRetry('/observations/species_counts', {
         iconic_taxa: 'Aves',
@@ -183,7 +183,8 @@ export class INaturalistApi {
         locale: 'es',
         per_page: 200,
         hrank: 'family',
-        lrank: 'family'
+        lrank: 'family',
+        ...(taxonId ? { taxon_id: taxonId } : {}),
       });
 
       if (!data?.results) return [];
@@ -207,7 +208,7 @@ export class INaturalistApi {
   async getBirdsByTaxon(taxonId: number, params: {
     per_page?: number;
     page?: number;
-  } = {}): Promise<Bird[]> {
+  } = {}): Promise<BirdsResponse> {
     return this.getBirds({
       ...params,
       taxon_id: taxonId
@@ -232,7 +233,7 @@ export class INaturalistApi {
     month?: number;
     d1?: string;
     d2?: string;
-  } = {}): Promise<Bird[]> {
+  } = {}): Promise<BirdsResponse> {
     try {
       const requestParams: Record<string, any> = {
         iconic_taxa: 'Aves',
@@ -312,7 +313,7 @@ export class INaturalistApi {
         })
         .filter((bird): bird is Bird => bird !== null && bird.photos.length > 0);
 
-      return validObservations;
+      return { birds: validObservations, totalResults: data.total_results || 0 };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error desconocido';
       throw new Error(`Error al obtener observaciones: ${message}`);

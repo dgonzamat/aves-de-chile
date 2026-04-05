@@ -111,7 +111,7 @@ export function BirdMapView({ birds, onSelectBird, loading }: BirdMapViewProps) 
       const btn = document.createElement('button');
       btn.textContent = 'Ver detalles';
       btn.style.cssText = 'margin-top:8px;width:100%;padding:6px;background:#1b6b4a;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;';
-      btn.addEventListener('click', () => window.__selectBird?.(bird.id));
+      btn.addEventListener('click', (e) => { e.stopPropagation(); onSelectBird(bird); });
       container.appendChild(btn);
 
       marker.bindPopup(container, {
@@ -123,14 +123,6 @@ export function BirdMapView({ birds, onSelectBird, loading }: BirdMapViewProps) 
     });
   }, [birds]);
 
-  // Expose select handler to popup buttons
-  useEffect(() => {
-    (window as any).__selectBird = (id: number) => {
-      const bird = birds.find(b => b.id === id);
-      if (bird) onSelectBird(bird);
-    };
-    return () => { (window as any).__selectBird = undefined; };
-  }, [birds, onSelectBird]);
 
   return (
     <div className="animate-fade-in">

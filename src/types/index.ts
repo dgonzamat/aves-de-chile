@@ -72,6 +72,11 @@ export interface BirdDetails {
   }>;
 }
 
+export interface BirdsResponse {
+  birds: Bird[];
+  totalResults: number;
+}
+
 export interface Filters {
   startDate: string;
   endDate: string;
