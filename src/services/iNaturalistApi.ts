@@ -88,6 +88,22 @@ export class INaturalistApi {
     }
   }
 
+  private getCoordinates(obs: any): { latitude: number; longitude: number } {
+    if (obs.latitude != null && obs.longitude != null) {
+      return { latitude: Number(obs.latitude), longitude: Number(obs.longitude) };
+    }
+    if (obs.geojson?.coordinates) {
+      return { latitude: Number(obs.geojson.coordinates[1]), longitude: Number(obs.geojson.coordinates[0]) };
+    }
+    if (obs.location) {
+      const parts = String(obs.location).split(',').map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return { latitude: parts[0], longitude: parts[1] };
+      }
+    }
+    return { latitude: 0, longitude: 0 };
+  }
+
   private getRegionFromCoordinates(lat: number, lng: number): string {
     let closestRegion = REGIONES_CHILE[0];
     let minDistance = Infinity;
@@ -178,7 +194,7 @@ export class INaturalistApi {
           name: r.taxon.name,
           commonName: r.taxon.preferred_common_name || r.taxon.name,
           count: r.count || 0,
-          photoUrl: r.taxon.default_photo?.medium_url?.replace('square', 'medium') || undefined
+          photoUrl: this.getPhotoUrl(r.taxon.default_photo) || undefined
         }))
         .sort((a: any, b: any) => b.count - a.count);
     } catch (error) {
@@ -204,6 +220,9 @@ export class INaturalistApi {
     order_by?: string;
     q?: string;
     taxon_id?: number;
+    lat?: number;
+    lng?: number;
+    radius?: number;
   } = {}): Promise<Bird[]> {
     try {
       const requestParams = {
@@ -241,12 +260,15 @@ export class INaturalistApi {
                 introduced: Boolean(obs.taxon.introduced),
                 threatened: Boolean(obs.taxon.threatened)
               },
-              location: {
-                latitude: obs.latitude || 0,
-                longitude: obs.longitude || 0,
-                placeGuess: obs.place_guess || 'Ubicación no especificada',
-                region: this.getRegionFromCoordinates(obs.latitude || 0, obs.longitude || 0)
-              },
+              location: (() => {
+                const coords = this.getCoordinates(obs);
+                return {
+                  latitude: coords.latitude,
+                  longitude: coords.longitude,
+                  placeGuess: obs.place_guess || 'Ubicación no especificada',
+                  region: this.getRegionFromCoordinates(coords.latitude, coords.longitude),
+                };
+              })(),
               photos: obs.photos
                 .map(photo => {
                   const url = this.getPhotoUrl(photo);

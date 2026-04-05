@@ -74,7 +74,8 @@ export function BirdMapView({ birds, onSelectBird, loading }: BirdMapViewProps) 
     markersRef.current.clearLayers();
 
     birds.forEach(bird => {
-      if (!bird.location.latitude || !bird.location.longitude) return;
+      if (bird.location.latitude === 0 && bird.location.longitude === 0) return;
+      if (bird.location.latitude == null || bird.location.longitude == null) return;
 
       const marker = L.marker(
         [bird.location.latitude, bird.location.longitude],

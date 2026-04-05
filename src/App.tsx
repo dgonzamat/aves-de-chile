@@ -81,15 +81,18 @@ function App() {
     async function fetchBirds() {
       try {
         setLoadingBirds(true);
+        const regionCoords = filters.region
+          ? REGIONES_CHILE.find(r => r.id === filters.region)
+          : null;
+
         const data = await api.getBirds({
           q: filters.searchTerm,
           per_page: BIRDS_PER_PAGE,
           page: currentPage,
           order: sortOrder,
-          order_by: sortType === 'taxonomic' ? 'species' : 'views'
+          order_by: sortType === 'taxonomic' ? 'species' : 'views',
+          ...(regionCoords ? { lat: regionCoords.lat, lng: regionCoords.lng, radius: 150 } : {})
         });
-
-        const regionName = filters.region ? getRegionName(filters.region) : '';
 
         const filteredData = data.filter(bird => {
           const observationDate = new Date(bird.observedOn);
@@ -97,8 +100,7 @@ function App() {
                                observationDate <= new Date(filters.endDate);
           const meetsConservationStatus = !filters.conservationStatus ||
                                         bird.species.conservationStatus === filters.conservationStatus;
-          const meetsRegion = !regionName || bird.location.region === regionName;
-          return meetsDateRange && meetsConservationStatus && meetsRegion;
+          return meetsDateRange && meetsConservationStatus;
         });
 
         const sortedData = [...filteredData].sort((a, b) => {
