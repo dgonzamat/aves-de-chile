@@ -150,7 +150,8 @@ export class INaturalistApi {
             type: this.determineSoundType(sound),
             description: sound.description
           }))
-        );
+        )
+        .slice(0, 3);
     } catch (error) {
       console.error('Error fetching sounds:', error);
       return [];

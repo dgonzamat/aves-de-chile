@@ -53,6 +53,20 @@ export function BirdDetails({ bird, onBack }: BirdDetailsProps) {
         </div>
       </div>
 
+      {/* Photo gallery from observations */}
+      {bird.observations.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-6">
+          {bird.observations
+            .flatMap(obs => obs.photos)
+            .slice(0, 12)
+            .map((photo, i) => (
+              <div key={i} className="aspect-square rounded-xl overflow-hidden">
+                <img src={photo.url} alt={bird.commonName} className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" loading="lazy" />
+              </div>
+            ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column: info */}
         <div className="lg:col-span-2 space-y-6">
@@ -112,15 +126,6 @@ export function BirdDetails({ bird, onBack }: BirdDetailsProps) {
                         <Calendar className="w-3.5 h-3.5 mr-1.5" />
                         <span>{format(new Date(obs.observedOn), "d 'de' MMMM yyyy", { locale: es })}</span>
                       </div>
-                      {obs.sounds && obs.sounds.length > 0 && (
-                        <div className="pt-2">
-                          {obs.sounds.map((sound, index) => (
-                            <audio key={index} controls className="w-full h-8" src={sound.url}>
-                              Tu navegador no soporta audio.
-                            </audio>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
